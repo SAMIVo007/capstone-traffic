@@ -166,28 +166,29 @@ const generateRefreshToken = (data) => {
 };
 
 const logOutController = async (req, res) => {
+	console.log(req.params.id);
+	console.log("in logout");
 	try {
-		console.log(req.User.id);
-		if (!req.user || !req.user.id) {
-			return res.status(400).json({ error: "Invalid user information" });
+		if (!req.params.id) {
+			return res.status(400).json({ error: "session not available" });
 		}
 
-		await prisma.User.update({
-			where: {
-				id: req.User.id,
-			},
-			data: {
-				access_token: null,
-				refresh_token: null,
-			},
-		});
+		// await prisma.User.update({
+		// 	where: {
+		// 		id: req.params.id
+		// 	},
+		// 	data: {
+		// 		access_token: null,
+		// 		refresh_token: null,
+		// 	},
+		// });
 
 		await prisma.Session.deleteMany({
 			where: {
-				userId: req.User.id,
+				sessionToken: req.params.id,
 			},
 		});
-
+		console.log("alfter logout");
 		return res.status(200).json({ message: "Logged out successfully" });
 	} catch (e) {
 		return res
@@ -204,16 +205,42 @@ const generateSessionToken = () => {
 	return Math.random().toString(36).substr(2, 10);
 };
 
-const checkValidSession = async (data) => {
+const checkValidSession = async (req, res) => {
+	const sessionId  = req.params.id;
+	console.log("id1: ",sessionId);
 	try {
-		const thisSession = await prisma.Session.findUnique(data);
-		if(thisSession)
-			return true;
-		return false;
+		const thisSession = await prisma.Session.findUnique({
+			where: { sessionToken:  sessionId },
+		});
+		console.log("isession: ",thisSession);
+		if (thisSession) return res.status(200).json({success:"Is Logged In"});
+		return res.status(401).json({error:"Not Logged In"});
 	} catch (e) {
-		return res
-			.status(500)
-			.json({ error: "Session Expired", details: e.message });
+		return res.status(500).json({ error: "Session Expired", details: e.message });
+	}
+};
+
+const getUserDetails = async (req, res) => {
+	const sessionId  = req.params.id;
+	console.log("Backend Session id ; ",sessionId);
+	console.log("request from front end ");
+	try {
+		const thisSession = await prisma.Session.findUnique({
+			where: { sessionToken:  sessionId },
+		});
+		console.log(thisSession)
+		const thisUser = await prisma.User.findUnique({
+			where : {
+				id:thisSession.userId
+			}
+		});
+		console.log(thisUser)
+		if(thisUser)
+			return res.status(200).send(thisUser);
+		else
+			return res.status(500).json({ error: "No user found", details: e.message });
+	} catch (e) {
+		return res.status(500).json({ error: "Session Expired", details: e.message });
 	}
 };
 
@@ -222,5 +249,6 @@ module.exports = {
 	loginController,
 	logOutController,
 	refreshAccessTokenController,
-	checkValidSession
+	checkValidSession,
+	getUserDetails,
 };
