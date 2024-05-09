@@ -6,9 +6,8 @@ const prisma = new PrismaClient();
 const signUpController = async (req, res) => {
 	try {
 		const { name, email, password } = req.body;
-
 		if (!email || !password || !name) {
-			return res.status(400).json({ error: "Please provide all required fields" });
+			return res.status(203).json({ message: "Please provide all required fields" });
 		}
 
 		const existingUser = await prisma.user.findUnique({
@@ -18,7 +17,7 @@ const signUpController = async (req, res) => {
 		});
 
 		if (existingUser) {
-			return res.status(409).json({ error: "User already exists" });
+			return res.status(203).json({ message: "User already exists" });
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
@@ -41,8 +40,8 @@ const signUpController = async (req, res) => {
 			.json({ message: "User registered successfully", user, verificationToken });
 	} catch (err) {
 		return res
-			.status(500)
-			.json({ error: "Internal server error", details: err.message });
+			.status(203)
+			.json({ message: "Internal server error", details: err.message });
 	}
 };
 
@@ -57,13 +56,13 @@ const loginController = async (req, res) => {
 		});
 
 		if (!existingUser) {
-			return res.status(404).json({ error: "User not found" });
+			return res.status(203).json({ message: "User not found" });
 		}
 
 		const matched = await bcrypt.compare(password, existingUser.hashedPassword);
 
 		if (!matched) {
-			return res.status(403).json({ error: "Incorrect password" });
+			return res.status(203).json({ message: "Incorrect password" });
 		}
 
 		const accessToken = generateAccessToken({
@@ -97,8 +96,8 @@ const loginController = async (req, res) => {
 			.json({ message: "Login successful", accessToken, session });
 	} catch (err) {
 		return res
-			.status(500)
-			.json({ error: "Internal server error", details: err.message });
+			.status(203)
+			.json({ message: "Internal server error", details: err.message });
 	}
 };
 
@@ -166,8 +165,7 @@ const generateRefreshToken = (data) => {
 };
 
 const logOutController = async (req, res) => {
-	console.log(req.params.id);
-	console.log("in logout");
+
 	try {
 		if (!req.params.id) {
 			return res.status(400).json({ error: "session not available" });
@@ -188,7 +186,6 @@ const logOutController = async (req, res) => {
 				sessionToken: req.params.id,
 			},
 		});
-		console.log("alfter logout");
 		return res.status(200).json({ message: "Logged out successfully" });
 	} catch (e) {
 		return res
@@ -207,12 +204,10 @@ const generateSessionToken = () => {
 
 const checkValidSession = async (req, res) => {
 	const sessionId  = req.params.id;
-	console.log("id1: ",sessionId);
 	try {
 		const thisSession = await prisma.Session.findUnique({
 			where: { sessionToken:  sessionId },
 		});
-		console.log("isession: ",thisSession);
 		if (thisSession) return res.status(200).json({success:"Is Logged In"});
 		return res.status(401).json({error:"Not Logged In"});
 	} catch (e) {
@@ -222,19 +217,15 @@ const checkValidSession = async (req, res) => {
 
 const getUserDetails = async (req, res) => {
 	const sessionId  = req.params.id;
-	console.log("Backend Session id ; ",sessionId);
-	console.log("request from front end ");
 	try {
 		const thisSession = await prisma.Session.findUnique({
 			where: { sessionToken:  sessionId },
 		});
-		console.log(thisSession)
 		const thisUser = await prisma.User.findUnique({
 			where : {
 				id:thisSession.userId
 			}
 		});
-		console.log(thisUser)
 		if(thisUser)
 			return res.status(200).send(thisUser);
 		else
